@@ -10,11 +10,13 @@ import zitadel from 'k6/x/zitadel';
 export class Tokens {
   idToken?: string;
   accessToken?: string;
+  refreshToken?: string;
   info?: any;
 
   constructor(res: JSONObject) {
     this.idToken = res.id_token ? res.id_token!.toString() : undefined;
     this.accessToken = res.access_token ? res.access_token!.toString() : undefined;
+    this.refreshToken = res.refresh_token ? res.refresh_token!.toString() : undefined;
     this.info = this.idToken
       ? JSON.parse(encoding.b64decode(this.idToken?.split('.')[1].toString(), 'rawstd', 's'))
       : undefined;
@@ -207,4 +209,39 @@ export async function finalizeAuthRequest(id: string, session: any, tokens: any)
   finalizeAuthRequestTrend.add(res.timings.duration);
 
   return res;
+}
+
+const refreshTokenTrend = new Trend('refresh_token_duration', true);
+export function loginByRefreshToken(refreshToken = '') {
+  check(refreshToken, {
+    'refreshToken set': (c) => (c !== undefined && c !== null) || fail('refreshToken was not set'),
+  });
+  const response = http.post(
+      url('/oauth/v2/token'),
+      {
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        scope: 'openid email profile offline_access urn:zitadel:iam:org:project:id:zitadel:aud',
+        client_id: Client().client_id,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      },
+  );
+
+  refreshTokenTrend.add(response.timings.duration);
+  check(response, {
+    'token status ok': (r) => r.status == 200 || fail(`invalid token response status: ${r.status} body: ${r.body}`),
+  });
+  const token = new Tokens(response.json() as JSONObject);
+  check(token, {
+    'access token created': (t) => t.accessToken !== undefined,
+    'refresh token created': (t) => t.refreshToken !== undefined,
+    'id token created': (t) => t.idToken !== undefined,
+    'info created': (t) => t.info !== undefined,
+  });
+
+  return token;
 }

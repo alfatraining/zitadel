@@ -27,15 +27,21 @@ const client = {
   redirect_uri: url('/ui/console/auth/callback'),
 };
 
-export function Client() {
-  if (client.client_id) {
-    return client;
+export function Client(requestOfflineAccess: boolean = false) {
+  let customClient = { ...client };
+
+  if (requestOfflineAccess) {
+    customClient.scope += " offline_access";
+  }
+
+  if (customClient.client_id) {
+    return customClient;
   }
   const env = http.get(url('/ui/console/assets/environment.json'));
 
-  client.client_id = env.json('clientid') ? env.json('clientid')?.toString()! : '';
+  customClient.client_id = env.json('clientid') ? env.json('clientid')?.toString()! : '';
 
-  return client;
+  return customClient;
 }
 
 let maxVUs: number;

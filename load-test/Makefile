@@ -11,6 +11,11 @@ K6 := ./../../xk6-modules/k6
 human_password_login: bundle
 	${K6} run --summary-trend-stats "min,avg,max,p(50),p(95),p(99)" dist/human_password_login.js --vus ${VUS} --duration ${DURATION} --out csv=output/human_password_login_${DATE}.csv
 
+.PHONY: refresh_token_login
+refresh_token_login: bundle
+	K6_SETUP_TIMEOUT=240s ${K6} run --summary-trend-stats "min,avg,max,p(50),p(95),p(99)" dist/refresh_token_login.js --vus ${VUS} --duration ${DURATION} --out csv=output/refresh_token_login_${DATE}.csv
+
+
 .PHONY: machine_pat_login
 machine_pat_login: bundle
 	${K6} run --summary-trend-stats "min,avg,max,p(50),p(95),p(99)" dist/machine_pat_login.js --vus ${VUS} --duration ${DURATION} --out csv=output/machine_pat_login_${DATE}.csv

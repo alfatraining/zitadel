@@ -9,19 +9,19 @@ import url from './url';
 import { User } from './user';
 import { Tokens } from './oidc';
 
-export function loginByUsernamePassword(user: User) {
+export function loginByUsernamePassword(user: User, requestRefreshToken: boolean = false) {
   check(user, {
     'user defined': (u) => u !== undefined || fail(`user is undefined`),
   });
 
-  const loginUI = initLogin();
+  const loginUI = initLogin(undefined, requestRefreshToken);
   const loginNameResponse = enterLoginName(loginUI, user);
   const passwordResponse = enterPassword(loginNameResponse, user);
-  return token(new URL(passwordResponse.url).searchParams.get('code'));
+  return token(new URL(passwordResponse.url).searchParams.get('code'), requestRefreshToken);
 }
 
 const initLoginTrend = new Trend('login_ui_init_login_duration', true);
-export function initLogin(clientId?: string): Response {
+export function initLogin(clientId?: string, requestOfflineAccess: boolean = false): Response {
   let params = {};
   let expectedStatus = 200;
   if (clientId) {
@@ -36,7 +36,7 @@ export function initLogin(clientId?: string): Response {
 
   const response = http.get(
     url('/oauth/v2/authorize', {
-      searchParams: Client(),
+      searchParams: Client(requestOfflineAccess),
     }),
     params,
   );
@@ -95,7 +95,7 @@ function enterPassword(page: Response, user: User): Response {
 }
 
 const tokenTrend = new Trend('login_ui_token_duration', true);
-function token(code = '') {
+function token(code = '', requestRefreshToken = false) {
   check(code, {
     'code set': (c) => (c !== undefined && c !== null) || fail('code was not set'),
   });
@@ -125,6 +125,11 @@ function token(code = '') {
     'id token created': (t) => t.idToken !== undefined,
     'info created': (t) => t.info !== undefined,
   });
+  if (requestRefreshToken) {
+    check(token, {
+      'refresh token created': (t) => t.refreshToken !== undefined,
+    })
+  }
 
   return token;
 }
